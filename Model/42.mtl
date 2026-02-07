@@ -121,7 +121,7 @@ Kd 1.0 1.0 1.0
 Ka 1.0 1.0 1.0
 Ks 0.0 0.0 0.0
 Ke 0.0 0.0 0.0
-map_Kd GlastLogo.ppm
+map_Kd NONE
 
 newmtl GOLD_KAPTON
 Ns 20.0
@@ -217,8 +217,8 @@ Ka 1.0  1.0  1.0
 Kd 1.0  1.0  1.0
 Ks 0.1  0.1  0.1
 Ke 0.0  0.0  0.0
-map_Kd ErosColor.ppm
-map_Bump ErosBump.ppm
+map_Kd NONE
+map_Bump NONE
 
 newmtl GOLD
 Ns 100.0

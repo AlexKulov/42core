@@ -1,5 +1,5 @@
 <<<<<<<<<<<<<<<<<<<<<<  Minor Body Inputs for 42  >>>>>>>>>>>>>>>>>>>>>>>>>>
-9                                  ! Number of Minor Bodies in this File
+0                                  ! Number of Minor Bodies in this File
 *****************************  Minor Body 0 *********************************
 TRUE                               ! Exists
 "Bennu"                            ! Name

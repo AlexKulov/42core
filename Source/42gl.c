@@ -302,7 +302,7 @@ void MeshToDisplayLists(struct MeshType *G)
                TexActive = 1;
                glActiveTexture(GL_TEXTURE2);
                glEnable(GL_TEXTURE_CUBE_MAP);
-               glBindTexture(GL_TEXTURE_CUBE_MAP,SkyCube);
+               //glBindTexture(GL_TEXTURE_CUBE_MAP,SkyCube);
                glUniform1i(ReflectEnabledLoc,TRUE);
             }
             if (M->NoiseColEnabled) {
@@ -4813,7 +4813,7 @@ void LoadCamTextures(void)
          }
       }
 
-      SkyCube = PpmToCubeTag("./World/","StarryEnvMap",3);
+      //SkyCube = PpmToCubeTag("./World/","StarryEnvMap",3);
 
       World[SOL].Color[0] = 1.0;
       World[SOL].Color[1] = 1.0;
@@ -4942,9 +4942,9 @@ void LoadCamTextures(void)
       World[EARTH].ColCubeTag = PpmToCubeTag("./World/","MoonlikeCol",3);
       World[EARTH].BumpCubeTag = PpmToCubeTag("./World/","MoonlikeBump",3);
       */
-      World[EARTH].BumpCubeTag = PpmToCubeTag("./World/","EarthBump",3);
-      World[MARS].BumpCubeTag = PpmToCubeTag("./World/","MarsBump",3);
-      World[EARTH].CloudGlossCubeTag = PpmToCubeTag("./World/","EarthCloudGloss",3);
+      //World[EARTH].BumpCubeTag = PpmToCubeTag("./World/","EarthBump",3);
+      //World[MARS].BumpCubeTag = PpmToCubeTag("./World/","MarsBump",3);
+      //World[EARTH].CloudGlossCubeTag = PpmToCubeTag("./World/","EarthCloudGloss",3);
 
       World[LUNA].ColCubeTag = PpmToCubeTag("./World/","LunaCol",3);
       World[LUNA].BumpCubeTag = PpmToCubeTag("./World/","LunaBump",3);
