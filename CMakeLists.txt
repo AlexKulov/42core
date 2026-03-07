@@ -61,4 +61,6 @@ if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32)
 endif()
 
-#target_link_libraries(${PROJECT_NAME} m)
+if(UNIX)
+    target_link_libraries(${PROJECT_NAME} m dl rt pthread)
+endif()

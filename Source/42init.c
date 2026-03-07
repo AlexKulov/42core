@@ -3398,8 +3398,8 @@ void LoadMoonsOfMars(void)
          M->Type = MOON;
       }
       strcpy(World[PHOBOS].MeshFileName,"Phobos.obj");
-      Mesh = LoadWingsObjFile(ModelPath,World[PHOBOS].MeshFileName,
-         &Matl,&Nmatl,Mesh,&Nmesh,&World[PHOBOS].MeshTag,FALSE);
+      //Mesh = LoadWingsObjFile(ModelPath,World[PHOBOS].MeshFileName,
+      //   &Matl,&Nmatl,Mesh,&Nmesh,&World[PHOBOS].MeshTag,FALSE);
 
 
 #undef Nm
