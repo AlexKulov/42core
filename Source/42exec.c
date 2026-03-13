@@ -25,7 +25,7 @@
 #ifdef _ENABLE_GUI_
    extern int HandoffToGui(int argc, char **argv);
 #endif
-
+   static int rank;
 /**********************************************************************/
 void ReportProgress(void)
 {
@@ -40,9 +40,10 @@ void ReportProgress(void)
          if (SimTime >= ProgressTime) {
             ProgressCtr++;
             ProgressTime = (double) (ProgressCtr*PROGRESSPERCENT)/100.0*STOPTIME;
-            printf("    42 Case %s is %3.1li%% Complete at Time = %12.3f\n",
-               InOutPath,ProgressPercent,SimTime);
+            printf("Process %d:    42 Case %s is %3.1li%% Complete at Time = %12.3f\n",
+               rank, InOutPath,ProgressPercent,SimTime);
             ProgressPercent += PROGRESSPERCENT;
+            fflush(stdout);
          }
       }
 }
@@ -315,6 +316,32 @@ void ZeroFrcTrq(void)
       }
 }
 /**********************************************************************/
+#include <mpi.h>
+static int rankSC0=0, rankSCf=0;
+static void distributeSC(long Nsc, int size){
+    int base = Nsc / size;
+    int remainder = Nsc % size;
+
+    if (rank < remainder) {
+        // get base+1 sc
+        rankSC0 = rank * (base + 1);
+        rankSCf = rankSC0 + base;
+    } else {
+        // get base sc
+        int first_part = remainder * (base + 1);
+        rankSC0 = first_part + (rank - remainder) * base;
+        rankSCf = rankSC0 + base - 1;
+    }
+
+    if (rankSC0 > rankSCf) {
+        printf("Process %d: no satellites assigned\n", rank);
+    } else {
+        printf("Process %d: SC[%d..%d] (%d satellites)\n",
+               rank, rankSC0, rankSCf, rankSCf - rankSC0 + 1);
+    }
+    fflush(stdout);
+}
+
 long SimStep(void)
 {
       long Isc;
@@ -335,7 +362,7 @@ long SimStep(void)
          ZeroFrcTrq();
          for(Isc=0;Isc<Nsc;Isc++) {
             S = &SC[Isc];
-            if (S->Exists) {
+            if (S->Exists && rankSC0<=Isc && Isc<=rankSCf) {
                Environment(S);    /* Magnetic Field, Atmospheric Density */
                Perturbations(S);  /* Environmental Forces and Torques */
                Sensors(S);
@@ -344,7 +371,8 @@ long SimStep(void)
                PartitionForces(S); /* Orbit-affecting and "internal" */
             }
          }
-         Report();  /* File Output */
+         if(OutFlag)
+             Report();  /* File Output */
       }
 
       ReportProgress();
@@ -355,7 +383,8 @@ long SimStep(void)
 
       /* Update Dynamics to next Timestep */
       for(Isc=0;Isc<Nsc;Isc++) {
-         if (SC[Isc].Exists) Dynamics(&SC[Isc]);
+          if (SC[Isc].Exists && rankSC0<=Isc && Isc<=rankSCf)
+              Dynamics(&SC[Isc]);
       }
       SimComplete = AdvanceTime();
       OrbitMotion(DynTime);
@@ -368,7 +397,7 @@ long SimStep(void)
       ZeroFrcTrq();
       for(Isc=0;Isc<Nsc;Isc++) {
          S = &SC[Isc];
-         if (S->Exists) {
+         if (S->Exists && rankSC0<=Isc && Isc<=rankSCf) {
             Environment(S);    /* Magnetic Field, Atmospheric Density */
             Perturbations(S);  /* Environmental Forces and Torques */
             Sensors(S);
@@ -377,7 +406,8 @@ long SimStep(void)
             PartitionForces(S); /* Orbit-affecting and "internal" */
          }
       }
-      Report();  /* File Output */
+      if(OutFlag)
+          Report();  /* File Output */
 
       /* Exit when Stoptime is reached */
       if (SimComplete) {
@@ -394,6 +424,11 @@ long SimStep(void)
 /**********************************************************************/
 int exec(int argc,char **argv)
 {
+    int size = 1;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
       long Done = 0;
 
       MapTime = 0.0;
@@ -410,6 +445,10 @@ int exec(int argc,char **argv)
       InitSim(argc,argv);
       CmdInterpreter();
       InitInterProcessComm();
+
+      // distribute SC between proc
+      distributeSC(Nsc, size);
+
       #ifdef _ENABLE_GUI_
          if (GLEnable) {
             HandoffToGui(argc,argv);
@@ -423,9 +462,10 @@ int exec(int argc,char **argv)
          /* Crunch numbers till done */
          while(!Done) {
             Done = SimStep();
+            MPI_Barrier(MPI_COMM_WORLD);
          }
       #endif
-
+    MPI_Finalize();
 /*
       printf("\n\nMap Time = %lf sec\n",MapTime);
       printf("Joint Partial Time = %lf sec\n",JointTime);

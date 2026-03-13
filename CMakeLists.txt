@@ -56,6 +56,13 @@ set(SOURCES
 # Exec file create
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+find_package(MPI)
+find_library(WINPTHREADS_LIB
+    NAMES pthread
+    REQUIRED
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE MPI::MPI_C ${WINPTHREADS_LIB})
+
 # Setting for Windows
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32)

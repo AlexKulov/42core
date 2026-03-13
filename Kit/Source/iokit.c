@@ -47,6 +47,7 @@ void ByteSwapDouble(double *A)
 /**********************************************************************/
 /*  This function cribbed from an OpenCL example                      */
 /*  on the Apple developer site                                       */
+#ifndef __MINGW64__
 int FileToString(const char *file_name, char **result_string,
                  size_t *string_len)
 {
@@ -86,6 +87,7 @@ int FileToString(const char *file_name, char **result_string,
       *string_len = file_len;
       return 0;
 }
+#endif
 /**********************************************************************/
 double *PpmToPsf(const char *path, const char *filename, 
    long *width, long *height, long *BytesPerPixel)
