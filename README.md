@@ -27,14 +27,16 @@ FALSE                            !  Graphics Front End?
 
 Now there is 2 branches:   
 * master   
-* server
-* server+MPI   
+* server  
 Server branch only for console mode.   
 You don't need anything except to compile (Make or CMake) and run.   
-I left only 2 examples from the native 42: InOut and Standalone    
-server+MPI: easy MPI test. You need MPI lib for Windows. Testing on Windows by MinGW64   
+I left only 2 examples from the native 42: InOut and Standalone   
+* server+MPI  
+server+MPI: easy MPI test. You need MPI lib. Testing on Windows by MinGW64 and Ubuntu18. For Ubuntu example: create 42 by just cmake-make. Run 42 like:  
+mpirun -np 4 ./42 MpiTest  
+It is means that you run 4 process and your initial data is MpiTest (example with 8 sat)
    
-> My be in future will be exist branch "stm32"   
+> My be in future will be exist branch "stm32" 😄   
 
 ## More information   
   https://github.com/AlexKulov/42shell/blob/master/README.md

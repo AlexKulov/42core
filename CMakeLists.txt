@@ -51,23 +51,25 @@ set(SOURCES
     Source/42fsw.c
     Source/42exec.c
     Source/42report.c
+    Source/42nos3.c
 )
 
 # Exec file create
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(MPI)
-find_library(WINPTHREADS_LIB
-    NAMES pthread
-    REQUIRED
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE MPI::MPI_C ${WINPTHREADS_LIB})
 
 # Setting for Windows
 if(WIN32)
+    find_library(WINPTHREADS_LIB
+    NAMES pthread
+    REQUIRED
+    )
+    target_link_libraries(${PROJECT_NAME} PRIVATE MPI::MPI_C ${WINPTHREADS_LIB})
     target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32)
 endif()
 
 if(UNIX)
-    target_link_libraries(${PROJECT_NAME} m dl rt pthread)
+    target_link_libraries(${PROJECT_NAME} PRIVATE MPI::MPI_C)
+    target_link_libraries(${PROJECT_NAME} PRIVATE m dl rt pthread)
 endif()
