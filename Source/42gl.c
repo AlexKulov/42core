@@ -33,6 +33,7 @@ void DrawWorldAsBackdrop(struct WorldType *W,double PosN[3],double svn[3])
       double CWE[3][3],PosW[3];
       GLfloat LightPos[4] = {0.0,0.0,0.0,0.0};
       GLfloat CWEarray[9];
+      double SunDist,RadRatio,CosSunAng;
       long i,j;
 
       A = &W->Atmo;
@@ -65,6 +66,10 @@ void DrawWorldAsBackdrop(struct WorldType *W,double PosN[3],double svn[3])
       }
       else CosRingAng = -1.0;
 
+      SunDist = MAGV(POV.PosH);
+      RadRatio = World[0].rad/SunDist;
+      CosSunAng = sqrt(1.0-RadRatio*RadRatio);
+
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_CUBE_MAP,W->ColCubeTag);
       glActiveTexture(GL_TEXTURE1);
@@ -79,6 +84,12 @@ void DrawWorldAsBackdrop(struct WorldType *W,double PosN[3],double svn[3])
       UniLoc = glGetUniformLocation(WorldShaderProgram,"HasAtmo");
       glUniform1i(UniLoc,A->Exists);
 
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"GasColor");
+      glUniform3f(UniLoc,A->GasColor[0],A->GasColor[1],A->GasColor[2]);
+
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"DustColor");
+      glUniform3f(UniLoc,A->DustColor[0],A->DustColor[1],A->DustColor[2]);
+
       UniLoc = glGetUniformLocation(WorldShaderProgram,"Br");
       glUniform3f(UniLoc,A->RayScat[0],A->RayScat[1],A->RayScat[2]);
 
@@ -91,9 +102,6 @@ void DrawWorldAsBackdrop(struct WorldType *W,double PosN[3],double svn[3])
       UniLoc = glGetUniformLocation(WorldShaderProgram,"Hm");
       glUniform1f(UniLoc,A->MieScaleHt);
 
-      UniLoc = glGetUniformLocation(WorldShaderProgram,"Gm");
-      glUniform1f(UniLoc,A->MieG);
-
       UniLoc = glGetUniformLocation(WorldShaderProgram,"UnitWorldVecE");
       glUniform3f(UniLoc,UnitWorldVecE[0],UnitWorldVecE[1],UnitWorldVecE[2]);
 
@@ -103,11 +111,17 @@ void DrawWorldAsBackdrop(struct WorldType *W,double PosN[3],double svn[3])
       UniLoc = glGetUniformLocation(WorldShaderProgram,"CosAtmoAng");
       glUniform1f(UniLoc,CosAtmoAng);
 
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"CosSunAng");
+      glUniform1f(UniLoc,CosSunAng);
+
       UniLoc = glGetUniformLocation(WorldShaderProgram,"CosRingAng");
       glUniform1f(UniLoc,CosRingAng);
 
       UniLoc = glGetUniformLocation(WorldShaderProgram,"WorldRad");
       glUniform1f(UniLoc,W->rad);
+
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"AtmoRad");
+      glUniform1f(UniLoc,A->rad);
 
       UniLoc = glGetUniformLocation(WorldShaderProgram,"PosEyeW");
       glUniform3f(UniLoc,PosW[0],PosW[1],PosW[2]);
@@ -668,7 +682,7 @@ void DrawCamHUD(void)
       char Frame[5][2]={"N","L","F","S","B"};
       char Axis[6][3] = {"+X","+Y","+Z","-X","-Y","-Z"};
       char Mode[3][20] = {"TRACK HOST","TRACK TARGET","FIXED IN HOST"};
-      char WorldName[80];
+      char WorldName[84];
       double RA,Dec;
       GLfloat BoxColor[4] = {0.133,0.545,0.133,1.0};
       GLfloat ClockColor[4] = {0.604,0.804,0.196,1.0};
@@ -1881,6 +1895,7 @@ void OpaquePass(void)
       struct ShadowFBOType *SM;
       long Ir;
       double PosR[3];
+      float Black[4] = {0.0,0.0,0.0,1.0};
 
       SM = &ShadowMap;
 
@@ -1901,7 +1916,7 @@ void OpaquePass(void)
          if (R->Exists && R->World == POV.Host.World) {
             glPushMatrix();
             glMultMatrixf(R->ModelMatrix);
-            DrawCmdPath();
+            /* DrawCmdPath(); */
             if (ShadowsEnabled) {
                MxM4f(ShadowFromNMatrix,R->ModelMatrix,ShadowMatrix);
                glUniformMatrix4fv(ShadowMatrixLoc,1,0,ShadowMatrix);
@@ -1913,6 +1928,14 @@ void OpaquePass(void)
 
       for(Isc=0;Isc<Nsc;Isc++) {
          S = &SC[Isc];
+         if (S->Eclipse) {
+            glLightfv(GL_LIGHT0,GL_DIFFUSE,Black);
+            glLightfv(GL_LIGHT0,GL_SPECULAR,Black);
+         }
+         else {
+            glLightfv(GL_LIGHT0,GL_DIFFUSE,LocalDiffuseLightColor);
+            glLightfv(GL_LIGHT0,GL_SPECULAR,SpecularLightColor);
+         }
          if (ScIsVisible(POV.Host.RefOrb,Isc,PosR)) {
             for(Ib=0;Ib<S->Nb;Ib++) {
                B = &S->B[Ib];
@@ -3736,6 +3759,7 @@ void FindSphereWindowAxes(double C[3][3])
          }
       }
 
+      center = 0;
       for (i=6; i<10; i++) {
          if (W->Spot[i].Selected == 1) {
             center = i - 6;
@@ -4668,6 +4692,10 @@ void Load3DNoise(void)
 
       N = 256*256*256*4;
       Tex = (GLubyte *) calloc(N,sizeof(GLubyte));
+      if (Tex==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       for(i=0;i<N;i++) Tex[i] = (GLubyte) fgetc(infile);
       fclose(infile);
 
@@ -4714,9 +4742,9 @@ void LoadCamLists(void)
          1.0);
       LoadSkyGrid(30.0,5.0,0.1*SkyDistance,&MajSkyGridList,&MinSkyGridList);
       FermiSkyList = LoadSkyCube("./Model/","FermiSky",CGH,1.0);
-      Load1FGL("1FGL Source Catalog.txt",BuckyPf,BuckyNeighbor,FermiSourceList,1.0);
-      LoadEgretCatalog("Egret Source Catalog.txt",BuckyPf,BuckyNeighbor,EgretSourceList,1.0);
-      LoadPulsars("Pulsar Catalog.txt",BuckyPf,BuckyNeighbor,PulsarList,1.0);
+      /* Load1FGL("1FGL Source Catalog.txt",BuckyPf,BuckyNeighbor,FermiSourceList,1.0); */
+      /* LoadEgretCatalog("Egret Source Catalog.txt",BuckyPf,BuckyNeighbor,EgretSourceList,1.0); */
+      /* LoadPulsars("Pulsar Catalog.txt",BuckyPf,BuckyNeighbor,PulsarList,1.0); */
 
       SphereList = glGenLists(1);
       glNewList(SphereList,GL_COMPILE);
@@ -4761,6 +4789,10 @@ GLuint LoadSpectrum(const char *SpectrumName)
 
 /* .. Save into 1-D texture */
       Tex = (GLubyte *) calloc(256*4,sizeof(GLubyte));
+      if (Tex==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       for(i=0;i<256;i++) {
          f = ((double) i)/255.0;
          r = (GLubyte) (LinInterp(F,R,f,N)+0.5);
@@ -5178,13 +5210,33 @@ void LoadCamShaders(void)
       glUniform1i(UniLoc,3);
       UniLoc = glGetUniformLocation(WorldShaderProgram,"HasAtmo");
       glUniform1i(UniLoc,0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"HasRing");
+      glUniform1i(UniLoc,0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"GasColor");
+      glUniform3f(UniLoc,0.0,0.0,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"DustColor");
+      glUniform3f(UniLoc,0.0,0.0,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"Br");
+      glUniform3f(UniLoc,0.0,0.0,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"Bm");
+      glUniform1f(UniLoc,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"Hr");
+      glUniform1f(UniLoc,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"Hm");
+      glUniform1f(UniLoc,0.0);
       UniLoc = glGetUniformLocation(WorldShaderProgram,"UnitWorldVecE");
       glUniform3f(UniLoc,0.0,0.0,1.0);
       UniLoc = glGetUniformLocation(WorldShaderProgram,"CosWorldAng");
       glUniform1f(UniLoc,0.0);
       UniLoc = glGetUniformLocation(WorldShaderProgram,"CosAtmoAng");
       glUniform1f(UniLoc,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"CosSunAng");
+      glUniform1f(UniLoc,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"CosRingAng");
+      glUniform1f(UniLoc,0.0);
       UniLoc = glGetUniformLocation(WorldShaderProgram,"WorldRad");
+      glUniform1f(UniLoc,0.0);
+      UniLoc = glGetUniformLocation(WorldShaderProgram,"AtmoRad");
       glUniform1f(UniLoc,0.0);
       UniLoc = glGetUniformLocation(WorldShaderProgram,"PosEyeW");
       glUniform3f(UniLoc,0.0,0.0,0.0);
@@ -5296,8 +5348,7 @@ void LoadMapShaders(void)
 void ReadGraphicsInpFile(void)
 {
       FILE *infile;
-      char junk[120],newline;
-      char response[120];
+      char response[121];
       long i;
       char Frame;
       long Host,Target;
@@ -5305,26 +5356,25 @@ void ReadGraphicsInpFile(void)
 /* .. Initialize POV */
       infile = FileOpen(InOutPath,"Inp_Graphics.txt","r");
 /* .. 42 Graphics Configuration File */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      ScanLine(infile,"",0,NULL);
 /* .. GL Output Interval */
-      fscanf(infile,"%lf %[^\n] %[\n]",&DTOUTGL,junk,&newline);
-      fscanf(infile,"%s %[^\n] %[\n]",StarCatFileName,junk,&newline);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%lf",1,&DTOUTGL);
+      ScanLine(infile,"%80s",1,StarCatFileName);
+      ScanLine(infile,"%120s",1,response);
       MapWindowExists = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       OrreryWindowExists = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       SphereWindowExists = DecodeString(response);
 /* .. POV */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"",0,NULL);
+      ScanLine(infile,"%120s",1,response);
       PauseFlag = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       POV.Mode = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       POV.Host.Type = DecodeString(response);
-      fscanf(infile,"%ld %ld %c %[^\n] %[\n]",
-         &Host,&POV.Host.Body,&Frame,junk,&newline);
+      ScanLine(infile,"%ld %ld %c",3,&Host,&POV.Host.Body,&Frame);
       if (Host >= Nsc || !SC[Host].Exists) {
          printf("POV Host SC %ld doesn't exist.\n",Host);
          exit(1);
@@ -5342,10 +5392,9 @@ void ReadGraphicsInpFile(void)
          printf("Nonsense frame in Inp_Graphics.txt\n");
          exit(1);
       }
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       POV.Target.Type = DecodeString(response);
-      fscanf(infile,"%ld %ld %c %[^\n] %[\n]",
-         &Target,&POV.Target.Body,&Frame,junk,&newline);
+      ScanLine(infile,"%ld %ld %c",3,&Target,&POV.Target.Body,&Frame);
       if (Target >= Nsc || !SC[Target].Exists) {
          printf("POV Target SC %ld doesn't exist.\n",Target);
          exit(1);
@@ -5363,53 +5412,51 @@ void ReadGraphicsInpFile(void)
          printf("Nonsense frame in Inp_Graphics.txt\n");
          exit(1);
       }
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       POV.BoreAxis = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       POV.UpAxis = DecodeString(response);
-      fscanf(infile,"%lf %[^\n] %[\n]",&POV.Range,junk,&newline);
-      fscanf(infile,"%lf %[^\n] %[\n]",&POV.Angle,junk,&newline);
-      fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
-         &POV.PosB[0],&POV.PosB[1],&POV.PosB[2],junk,&newline);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%lf",1,&POV.Range);
+      ScanLine(infile,"%lf",1,&POV.Angle);
+      ScanLine(infile,"%lf %lf %lf",3,
+         &POV.PosB[0],&POV.PosB[1],&POV.PosB[2]);
+      ScanLine(infile,"%120s",1,response);
       POV.View = DecodeString(response);
 
 /* .. CAM Parameters */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
-      fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",CamTitle,junk,&newline);
-      fscanf(infile,"%ld %ld %[^\n] %[\n]",
-         &CamWidth,&CamHeight,junk,&newline);
-      fscanf(infile,"%lf  %[^\n] %[\n]",&MouseScaleFactor,junk,&newline);
+      ScanLine(infile,"",0,NULL);
+      ScanLine(infile,"\"%80[^\"]\"",1,CamTitle);
+      ScanLine(infile,"%ld %ld",2,&CamWidth,&CamHeight);
+      ScanLine(infile,"%lf",1,&MouseScaleFactor);
       POV.AR = ((double) CamWidth)/((double) CamHeight);
-      fscanf(infile,"%lf  %[^\n] %[\n]",&GammaCorrection,junk,&newline);
+      ScanLine(infile,"%lf",1,&GammaCorrection);
 /* .. Cam Show/Hide */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      ScanLine(infile,"",0,NULL);
       for(i=0;i<CAM_MENU_SIZE;i++) {
-         fscanf(infile,"%s \"%[^\"]\" %[^\n] %[\n]",response,
-            CamShowLabel[i],junk,&newline);
+         ScanLine(infile,"%120s \"%40[^\"]\"",2,
+            response,CamShowLabel[i]);
          CamShow[i] = DecodeString(response);
       }
       ShadowsEnabled = CamShow[CAM_SHADOWS];
 
 /* .. MAP Parameters */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
-      fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",MapTitle,junk,&newline);
-      fscanf(infile,"%ld %ld %[^\n] %[\n]",
-         &MapWidth,&MapHeight,junk,&newline);
+      ScanLine(infile,"",0,NULL);
+      ScanLine(infile,"\"%80[^\"]\"",1,MapTitle);
+      ScanLine(infile,"%ld %ld",2,&MapWidth,&MapHeight);
 /* .. Map Show/Hide */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      ScanLine(infile,"",0,NULL);
       for(i=0;i<MAP_MENU_SIZE;i++) {
-         fscanf(infile,"%s \"%[^\"]\" %[^\n] %[\n]",response,
-            MapShowLabel[i],junk,&newline);
+         ScanLine(infile,"%120s \"%40[^\"]\"",2,
+            response,MapShowLabel[i]);
          MapShow[i] = DecodeString(response);
       }
 /* .. Sphere Window */
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"",0,NULL);
+      ScanLine(infile,"%120s",1,response);
       ShowConstellations[MAJOR_CONSTELL] = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       ShowConstellations[ZODIAC_CONSTELL] = DecodeString(response);
-      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+      ScanLine(infile,"%120s",1,response);
       ShowConstellations[MINOR_CONSTELL] = DecodeString(response);
 
       fclose(infile);
@@ -5419,24 +5466,20 @@ void ReadGraphicsInpFile(void)
 void LoadFOVs(void)
 {
       FILE *infile;
-      char junk[120],newline;
-      char response[120],response1[120],response2[120];
+      char response[121],response1[121],response2[121];
       double Ang1,Ang2,Ang3;
       long Seq;
       long i;
 
       infile = FileOpen(InOutPath,"Inp_FOV.txt","r");
-      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
-      fscanf(infile,"%ld %[^\n] %[\n]",&Nfov,junk,&newline);
+      ScanLine(infile,"",0,NULL);
+      ScanLine(infile,"%ld",1,&Nfov);
       FOV = (struct FovType *) calloc(Nfov,sizeof(struct FovType));
       for(i=0;i<Nfov;i++) {
-         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
-         fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",
-            FOV[i].Label,junk,&newline);
-         fscanf(infile,"%ld %lf %[^\n] %[\n]",
-            &FOV[i].Nv,&FOV[i].Length,junk,&newline);
-         fscanf(infile,"%lf %lf %[^\n] %[\n]",
-            &FOV[i].Width,&FOV[i].Height,junk,&newline);
+         ScanLine(infile,"",0,NULL);
+         ScanLine(infile,"\"%40[^\"]\"",1,FOV[i].Label);
+         ScanLine(infile,"%ld %lf",2,&FOV[i].Nv,&FOV[i].Length);
+         ScanLine(infile,"%lf %lf",2,&FOV[i].Width,&FOV[i].Height);
          if (FOV[i].Width >= 180.0) {
             printf("FOV[%ld] Width >= 180 deg.  This is not allowed.  Bailing out.\n",i);
             exit(1);
@@ -5447,17 +5490,14 @@ void LoadFOVs(void)
          }
          FOV[i].Width *= D2R;
          FOV[i].Height *= D2R;
-         fscanf(infile,"%f %f %f %f %[^\n] %[\n]",
-            &FOV[i].Color[0],&FOV[i].Color[1],&FOV[i].Color[2],&FOV[i].Color[3],
-            junk,&newline);
-         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+         ScanLine(infile,"%f %f %f %f",4,
+            &FOV[i].Color[0],&FOV[i].Color[1],&FOV[i].Color[2],&FOV[i].Color[3]);
+         ScanLine(infile,"%120s",1,response);
          FOV[i].Type = DecodeString(response);
-         fscanf(infile,"%s %s %[^\n] %[\n]",
-            response1,response2,junk,&newline);
+         ScanLine(infile,"%120s %120s",2,response1,response2);
          FOV[i].NearExists = DecodeString(response1);
          FOV[i].FarExists = DecodeString(response2);
-         fscanf(infile,"%ld %ld %[^\n] %[\n]",
-            &FOV[i].SC,&FOV[i].Body,junk,&newline);
+         ScanLine(infile,"%ld %ld",2,&FOV[i].SC,&FOV[i].Body);
          if (FOV[i].SC >= Nsc) {
             printf("FOV[%ld].SC is out of range.\n",i);
             exit(1);
@@ -5472,12 +5512,11 @@ void LoadFOVs(void)
             FOV[i].FarExists = FALSE;
          }
 
-         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
-            &FOV[i].pb[0],&FOV[i].pb[1],&FOV[i].pb[2],junk,&newline);
-         fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
-            &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
+         ScanLine(infile,"%lf %lf %lf",3,
+            &FOV[i].pb[0],&FOV[i].pb[1],&FOV[i].pb[2]);
+         ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,FOV[i].CB);
-         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
+         ScanLine(infile,"%120s",1,response);
          FOV[i].BoreAxis = DecodeString(response);
          FOV[i].H_Axis = (FOV[i].BoreAxis+1)%3;
          FOV[i].V_Axis = (FOV[i].BoreAxis+2)%3;
@@ -5490,22 +5529,22 @@ void InitColors(void)
       long i;
 
 
-      DistantDiffuseLightColor[0] = 0.95;
-      DistantDiffuseLightColor[1] = 0.95;
-      DistantDiffuseLightColor[2] = 0.95;
+      DistantDiffuseLightColor[0] = 1.0;
+      DistantDiffuseLightColor[1] = 1.0;
+      DistantDiffuseLightColor[2] = 1.0;
       DistantDiffuseLightColor[3] = 1.0;
 
       for(i=0;i<3;i++)
-         DistantAmbientLightColor[i] = 1.0-DistantDiffuseLightColor[i];
+         DistantAmbientLightColor[i] = 1.0-0.5*DistantDiffuseLightColor[i];
       DistantAmbientLightColor[3] = 1.0;
 
-      LocalDiffuseLightColor[0] = 0.5;
-      LocalDiffuseLightColor[1] = 0.5;
-      LocalDiffuseLightColor[2] = 0.5;
+      LocalDiffuseLightColor[0] = 0.75;
+      LocalDiffuseLightColor[1] = 0.75;
+      LocalDiffuseLightColor[2] = 0.75;
       LocalDiffuseLightColor[3] = 1.0;
 
       for(i=0;i<3;i++)
-         LocalAmbientLightColor[i] = 1.0-LocalDiffuseLightColor[i];
+         LocalAmbientLightColor[i] = 1.0-0.5*LocalDiffuseLightColor[i];
       LocalAmbientLightColor[3] = 1.0;
 
       SpecularLightColor[0] = 1.0;

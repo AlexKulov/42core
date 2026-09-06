@@ -111,6 +111,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                }
                else {
                   SilEdge = (struct SilEdgeType *) realloc(SilEdge,(SilNe+1)*sizeof(struct SilEdgeType));
+                  if (SilEdge==NULL) {
+                     printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+                     exit(1);
+                  }
                }
                SE = &SilEdge[SilNe];
                SE->Body = Ib;
@@ -153,6 +157,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
       }
       /* Form list of vertices, closing loops as needed */
       SilVtx = (struct SilVtxType *) calloc(1,sizeof(struct SilVtxType));
+      if (SilVtx==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       SilNv = 1;
       SilVtx[0].Body = SilEdge[0].Body;
       for(i=0;i<3;i++) {
@@ -163,6 +171,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
          if (SilEdge[Ie+1].Body == SilEdge[Ie].Body
           && SilEdge[Ie+1].Iv1 == SilEdge[Ie].Iv2) {
             SilVtx = (struct SilVtxType *) realloc(SilVtx,(SilNv+1)*sizeof(struct SilVtxType));
+            if (SilVtx==NULL) {
+               printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+               exit(1);
+            }
             SilVtx[SilNv].Body = SilEdge[Ie].Body;
             for(i=0;i<3;i++) {
                SilVtx[SilNv].PosB[i] = SilEdge[Ie].PosV2B[i];
@@ -172,6 +184,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
          }
          else {
             SilVtx = (struct SilVtxType *) realloc(SilVtx,(SilNv+2)*sizeof(struct SilVtxType));
+            if (SilVtx==NULL) {
+               printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+               exit(1);
+            }
             SilVtx[SilNv].Body = SilEdge[Ie].Body;
             for(i=0;i<3;i++) {
                SilVtx[SilNv].PosB[i] = SilEdge[Ie].PosV2B[i];
@@ -187,6 +203,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
          }
       }
       SilVtx = (struct SilVtxType *) realloc(SilVtx,(SilNv+1)*sizeof(struct SilVtxType));
+      if (SilVtx==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       SilVtx[SilNv].Body = SilEdge[SilNe-1].Body;
       for(i=0;i<3;i++) {
          SilVtx[SilNv].PosB[i] = SilEdge[SilNe-1].PosV2B[i];
@@ -216,6 +236,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                if (SilNv > 0) {
                   free(InVtx);
                   InVtx = (struct SilVtxType *) calloc(SilNv,sizeof(struct SilVtxType));
+                  if (InVtx==NULL) {
+                     printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+                     exit(1);
+                  }
                   memcpy(InVtx,SilVtx,SilNv*sizeof(struct SilVtxType));
                }
                SilNin = SilNv;
@@ -235,6 +259,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                               DirVecN,OutVtx);
                            if (Nout > 0) {
                               ClipVtx = (struct SilVtxType *) realloc(ClipVtx,(SilNc+Nout)*sizeof(struct SilVtxType));
+                              if (ClipVtx==NULL) {
+                                 printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+                                 exit(1);
+                              }
                               for(Iout=0;Iout<Nout;Iout++) {
                                  ClipVtx[SilNc+Iout].Body = B1;
                                  for(i=0;i<3;i++) {
@@ -250,6 +278,10 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                      if (SilNc > 0) {
                         free(InVtx);
                         InVtx = (struct SilVtxType *) calloc(SilNc,sizeof(struct SilVtxType));
+                        if (InVtx==NULL) {
+                           printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+                           exit(1);
+                        }
                         memcpy(InVtx,ClipVtx,SilNc*sizeof(struct SilVtxType));
                      }
                      SilNin = SilNc;

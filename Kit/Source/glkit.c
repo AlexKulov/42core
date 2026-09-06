@@ -34,8 +34,13 @@ void DrawBitmapString(void *font, const char *string)
 {
       const char *c;
       for(c=string; *c != '\0'; c++) {
-         glutBitmapCharacter(font, *c);
+         //printf("%p %c\n",c,*c);
+         //printf("%c",*c);
+         if (*c > 31 && *c < 127) { /* Restrict to printable characters */
+            glutBitmapCharacter(font, *c);
+         }
       }
+      //printf("\n");
 }
 /**********************************************************************/
 /*  Available fonts:                                                  */
@@ -161,7 +166,7 @@ GLubyte Font8x11[95][11] = {
       GLuint Offset;
 
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      Offset = glGenLists(95);
+      Offset = glGenLists(128);
 
       for (i = 0,j = ' '; i < 95; i++,j++) {
          glNewList(Offset + j, GL_COMPILE);
@@ -1607,6 +1612,7 @@ void LoadEgretCatalog(const char *EgretFileName,double BuckyPf[32][3],
          QTxV(qnh,r,GammaSource[i].r);
 
          GammaSource[i].r[3] = 1.0/SkyDistance;
+         GammaSource[i].Color[3] = 1.0;
 
          if (GammaSource[i].Type == 'A') {
             GammaSource[i].Color[0] = 0.0;
@@ -1790,7 +1796,7 @@ void Load1FGL(const char *FileName,double BuckyPf[32][3],
       long ClosestVtx;
       long N[32], ID[32][Nsource];
       long i,j,k;
-      /*char s[20];*/
+      char s[80];
       GLfloat Color[3][4] = {{0.663,0.663,0.663,1.0}, /* Unclassified */
                              {0.118,0.565,1.0,1.0}, /* Associated */
                              {0.863,0.078,0.235,1.0}}; /* Identified */
@@ -1883,10 +1889,9 @@ void Load1FGL(const char *FileName,double BuckyPf[32][3],
                glRasterPos4dv(SourceVec[j]);
                glBitmap(0,0,0,0,-8,-8,0);
                glBitmap(16,16,0.0,0.0,0.0,0.0,FglGlyph[Type[j]]);
-               /*glBitmap(0,0,0,0,18,-5,0);
-               **sprintf(s,"%ld",j);
-               **DrawBitmapString(GLUT_BITMAP_8_BY_13,s);
-               */
+               glBitmap(0,0,0,0,18,-5,0);
+               sprintf(s,"%ld",j);
+               DrawBitmapString(GLUT_BITMAP_8_BY_13,s);
             }
             glColor4fv(Black);
          glEndList();

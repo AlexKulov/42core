@@ -88,13 +88,14 @@ ifeq ($(42PLATFORM),__APPLE__)
 
    LFLAGS = 
    ifneq ($(strip $(GUIFLAG)),)
-      GLINC = -I /System/Library/Frameworks/OpenGL.framework/Headers/ -I /System/Library/Frameworks/GLUT.framework/Headers/
       ifeq ($(strip $(GLUT_OR_GLFW)),_USE_GLUT_)
+         GLINC = -I /System/Library/Frameworks/OpenGL.framework/Headers/ -I /System/Library/Frameworks/GLUT.framework/Headers/
          LIBS = -framework System -framework Carbon -framework OpenGL -framework GLUT
          GUIOBJ = $(OBJ)42gl.o $(OBJ)42glut.o $(OBJ)glkit.o $(OBJ)42gpgpu.o
          GUI_LIB = -D _USE_GLUT_
       else
-         LIBS = -lglfw -framework System -framework Carbon -framework OpenGL -framework GLUT
+         GLINC = -I /System/Library/Frameworks/OpenGL.framework/Headers/ -I /System/Library/Frameworks/GLUT.framework/Headers/ -I /opt/homebrew/Cellar/glfw/3.4/include
+         LIBS = -L /opt/homebrew/Cellar/glfw/3.4/lib -lglfw -framework System -framework Carbon -framework OpenGL -framework GLUT
          GUIOBJ = $(OBJ)42gl.o $(OBJ)42glfw.o $(OBJ)glkit.o $(OBJ)42gpgpu.o
          GUI_LIB = -D _USE_GLFW_
       endif
@@ -111,7 +112,7 @@ endif
 
 ifeq ($(42PLATFORM),__linux__)
    # Linux Macros
-   CINC =
+   CINC = -I /usr/include/
    EXTERNDIR =
    ARCHFLAG =
    # For graphics interface, choose GLUT or GLFW GUI libraries
@@ -216,8 +217,8 @@ endif
 #endif
 
 42OBJ = $(OBJ)42main.o $(OBJ)42exec.o $(OBJ)42actuators.o $(OBJ)42cmd.o \
-$(OBJ)42dynamics.o $(OBJ)42environs.o $(OBJ)42ephem.o $(OBJ)42fsw.o \
-$(OBJ)42init.o $(OBJ)42ipc.o $(OBJ)42jitter.o $(OBJ)42joints.o \
+$(OBJ)42commlink.o $(OBJ)42dynamics.o $(OBJ)42environs.o $(OBJ)42ephem.o \
+$(OBJ)42fsw.o $(OBJ)42init.o $(OBJ)42ipc.o $(OBJ)42jitter.o $(OBJ)42joints.o \
 $(OBJ)42optics.o $(OBJ)42perturb.o $(OBJ)42report.o $(OBJ)42sensors.o
 
 KITOBJ = $(OBJ)dcmkit.o $(OBJ)envkit.o $(OBJ)fswkit.o  $(OBJ)iokit.o \
@@ -235,7 +236,7 @@ AUTOOBJ = $(OBJ)WriteAcToCsv.o $(OBJ)WriteScToCsv.o $(OBJ)TxRxIPC.o
 #ANSIFLAGS = -Wstrict-prototypes -pedantic -ansi -Werror
 ANSIFLAGS =
 
-CFLAGS = -std=c11 -g -O0 -fpic -Wall -Wshadow -Wno-deprecated $(XWARN) $(ANSIFLAGS) $(GLINC) $(CINC) -I $(INC) -I $(KITINC) -I $(KITSRC) $(GMSECINC) $(ARCHFLAG) $(GUIFLAG) $(GUI_LIB) $(SHADERFLAG) $(CFDFLAG) $(FFTBFLAG) $(GSFCFLAG) $(GMSECFLAG) $(STANDALONEFLAG)
+CFLAGS = -std=gnu11 -g -O0 -fpic -Wall -Wshadow -Wno-deprecated $(XWARN) $(ANSIFLAGS) $(GLINC) $(CINC) -I $(INC) -I $(KITINC) -I $(KITSRC) $(GMSECINC) $(ARCHFLAG) $(GUIFLAG) $(GUI_LIB) $(SHADERFLAG) $(CFDFLAG) $(FFTBFLAG) $(GSFCFLAG) $(GMSECFLAG) $(STANDALONEFLAG)
 
 
 ##########################  Rules to link 42  #############################
@@ -263,6 +264,9 @@ $(OBJ)42actuators.o : $(SRC)42actuators.c $(INC)42.h $(INC)Ac.h $(INC)AcTypes.h
 
 $(OBJ)42cmd.o : $(SRC)42cmd.c $(INC)42.h $(INC)Ac.h $(INC)AcTypes.h
 	$(CC) $(CFLAGS) -c $(SRC)42cmd.c -o $(OBJ)42cmd.o
+
+$(OBJ)42commlink.o  : $(SRC)42commlink.c $(INC)42.h
+	$(CC) $(CFLAGS) -c $(SRC)42commlink.c -o $(OBJ)42commlink.o
 
 $(OBJ)42dynamics.o  : $(SRC)42dynamics.c $(INC)42.h
 	$(CC) $(CFLAGS) -c $(SRC)42dynamics.c -o $(OBJ)42dynamics.o
@@ -414,6 +418,6 @@ else ifeq ($(42PLATFORM),_WIN64)
 	del .\Object\*.o .\$(EXENAME) .\InOut\*.42
 else
 	rm -f $(OBJ)*.o ./$(EXENAME) ./AcApp $(KITDIR)42kit.so 
-	rm -f $(INOUT)*.42 ./Standalone/*.42 ./Demo/*.42 ./Rx/*.42 ./Tx/*.42 ./Rover/*.42
-	rm -f $(INOUT)*.csv ./Standalone/*.csv ./Demo/*.csv ./Rx/*.csv ./Tx/*.csv ./Rover/*.csv
+	rm -f $(INOUT)*.42 ./Standalone/*.42 ./Demo/*.42 ./Rx/*.42 ./Tx/*.42 ./LunarComm/*.42
+	rm -f $(INOUT)*.csv ./Standalone/*.csv ./Demo/*.csv ./Rx/*.csv ./Tx/*.csv ./LunarComm/*.csv
 endif
