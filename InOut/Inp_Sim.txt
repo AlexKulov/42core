@@ -39,7 +39,7 @@ MEAN                            !  Ephem Option (MEAN, DE430, DE440)
 TRUE                            !  Mercury
 TRUE                            !  Venus
 TRUE                            !  Earth and Luna
-TRUE                            !  Mars and its moons
+FALSE                            !  Mars and its moons
 TRUE                            !  Jupiter and its moons
 TRUE                            !  Saturn and its moons
 TRUE                            !  Uranus and its moons
